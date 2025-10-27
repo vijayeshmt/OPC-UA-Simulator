@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPC UA Simulator</title>
+    
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="logo">
+                <span class="material-icons">settings_remote</span>
+                
+                <h2>OPC UA Simulator<br>By Vijayesh</h2>
+
+            </div>
+
+            
+            <ul class="nav-menu">
+                <li class="nav-item active" data-tab="configuration">
+                    <span class="material-icons">settings</span>
+                    <span>Configuration</span>
+                </li>
+                <li class="nav-item" data-tab="monitoring">
+                    <span class="material-icons">dashboard</span>
+                    <span>Real-Time Monitoring</span>
+                </li>
+                <li class="nav-item" data-tab="variables">
+                    <span class="material-icons">tune</span>
+                    <span>Variable Settings</span>
+                </li>
+                <li class="nav-item" data-tab="configuration-vars">
+                    <span class="material-icons">build</span>
+                    <span>Variable Configuration</span>
+                </li>
+                <li class="nav-item" data-tab="charts">
+                    <span class="material-icons">show_chart</span>
+                    <span>Charts</span>
+                </li>
+                <li class="nav-item" data-tab="history">
+                    <span class="material-icons">history</span>
+                    <span>Historical Data</span>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <div id="configuration" class="tab-content active">
+                <h1>Server Configuration</h1>
+                
+                <div class="config-grid">
+                    <div class="config-card">
+                        <h3>Server Settings</h3>
+                        <div class="form-group">
+                            <label>Port Number</label>
+                            <input type="number" id="port-input" value="4840" min="1024" max="65535">
+                        </div>
+                        <div class="endpoint-display">
+                            <code id="endpoint-display">opc.tcp://localhost:4840</code>
+                        </div>
+                    </div>
+                    
+                    <div class="status-card">
+                        <h3>Status</h3>
+                        <div class="status-indicator">
+                            <span id="status-icon" class="status-dot offline"></span>
+                            <span id="status-text">OFFLINE</span>
+                        </div>
+                        <div class="stats">
+                            <div class="stat">
+                                <span class="material-icons">storage</span>
+                                <span id="var-count">4</span>
+                                <small>Variables</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button id="start-btn" class="btn btn-primary">
+                        <span class="material-icons">play_arrow</span>
+                        Start Server
+                    </button>
+                    <button id="stop-btn" class="btn btn-secondary" disabled>
+                        <span class="material-icons">stop</span>
+                        Stop Server
+                    </button>
+                    <button id="restart-btn" class="btn" disabled>
+                        <span class="material-icons">refresh</span>
+                        Restart
+                    </button>
+                </div>
+            </div>
+
+            <div id="monitoring" class="tab-content">
+                <h1>Real-Time Monitoring</h1>
+                <div class="monitoring-info">
+                    <p id="monitoring-status" style="font-size: 1.1rem;">Start the server to see real-time data</p>
+                </div>
+                <div id="monitoring-grid" class="monitoring-grid"></div>
+            </div>
+
+            <div id="variables" class="tab-content">
+                <h1>Variable Settings</h1>
+                <div class="info-banner">
+                    <span class="material-icons">info</span>
+                    <span>Current variables: <strong id="current-var-count">4/30</strong></span>
+                </div>
+                
+                <div class="variables-list" id="variables-list"></div>
+                
+                <div style="margin: 2rem 0;">
+                    <button class="btn btn-primary" onclick="saveAllVariables()" style="width: 100%;">
+                        <span class="material-icons">save</span>
+                        Save All Variables
+                    </button>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem; text-align: center; font-size: 0.9rem;">
+                        Restart server after saving to apply changes
+                    </p>
+                </div>
+                
+                <div class="add-variable-section">
+                    <h3>Add New Variable</h3>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Variable Name *</label>
+                            <input type="text" id="new-var-name" placeholder="e.g., FlowRate">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Variable Type *</label>
+                            <select id="new-var-type">
+                                <option value="Numeric">Numeric</option>
+                                <option value="String">String</option>
+                                <option value="Boolean">Boolean</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="type-specific-config">
+                        <div id="numeric-config">
+                            <div class="form-group">
+                                <label>Mode</label>
+                                <select id="numeric-mode">
+                                    <option value="Random">Random (with range)</option>
+                                    <option value="Constant">Constant value</option>
+                                </select>
+                            </div>
+                            
+                            <div id="random-config" class="form-grid">
+                                <div class="form-group">
+                                    <label>Min Value</label>
+                                    <input type="number" id="var-min" value="0" step="0.01">
+                                </div>
+                                <div class="form-group">
+                                    <label>Max Value</label>
+                                    <input type="number" id="var-max" value="100" step="0.01">
+                                </div>
+                            </div>
+                            
+                            <div id="constant-config" style="display: none;">
+                                <div class="form-group">
+                                    <label>Constant Value</label>
+                                    <input type="number" id="var-constant" value="0" step="0.01">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="string-config" style="display: none;">
+                            <div class="form-group">
+                                <label>Default String Value</label>
+                                <input type="text" id="string-value" placeholder="Enter default value">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="use-dropdown">
+                                    <span>Use dropdown list</span>
+                                </label>
+                            </div>
+                            
+                            <div id="dropdown-config" style="display: none;">
+                                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-weight: 500;">
+                                    Dropdown Options (Add multiple options below)
+                                </p>
+                                <div id="new-var-dropdown-list" style="margin-bottom: 1rem;"></div>
+                                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                                    <input type="text" id="new-dropdown-opt-input" placeholder="Enter option text" style="flex: 1;">
+                                    <button type="button" class="btn" onclick="addNewVarDropdownOption()" style="padding: 0.75rem 1.5rem;">
+                                        <span class="material-icons">add</span>
+                                        Add
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="boolean-config" style="display: none;">
+                            <div class="form-group">
+                                <label>Default Value</label>
+                                <select id="boolean-value">
+                                    <option value="true">True</option>
+                                    <option value="false">False</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="add-var-btn" class="btn btn-primary" style="margin-top: 1.5rem;">
+                        <span class="material-icons">add</span>
+                        Add Variable
+                    </button>
+                </div>
+            </div>
+
+            <div id="configuration-vars" class="tab-content">
+                <h1>Variable Configuration</h1>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                    Modify settings for existing variables. Changes to constants and dropdown selections apply immediately if server is running.
+                </p>
+                <div id="config-vars-list"></div>
+            </div>
+
+            <div id="charts" class="tab-content">
+                <h1>Historical Charts</h1>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                    Real-time charts for numeric variables with random values
+                </p>
+                <div id="charts-container"></div>
+            </div>
+
+            <div id="history" class="tab-content">
+                <h1>Historical Data</h1>
+                <div class="table-actions">
+                    <button id="download-csv" class="btn">
+                        <span class="material-icons">download</span>
+                        Download CSV
+                    </button>
+                    <span style="color: var(--text-secondary);">
+                        Showing last 200 entries
+                    </span>
+                </div>
+                <div class="table-container">
+                    <table id="history-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Variable</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: var(--text-secondary);">
+                                    Start the server to see historical data
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
